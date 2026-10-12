@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+# Accept the Minecraft EULA
+echo "eula=${EULA}" > eula.txt
+
+# Write the settings from the environment variables into server.properties
+cat > server.properties <<EOF
+server-port=25565
+motd=${MOTD}
+difficulty=${DIFFICULTY}
+gamemode=${GAMEMODE}
+max-players=${MAX_PLAYERS}
+white-list=${WHITE_LIST}
+EOF
+
+# Start the server (exec: Java receives the stop signal and saves the world)
+exec java -Xms${MEMORY} -Xmx${MEMORY} -jar /opt/minecraft/server.jar --nogui
