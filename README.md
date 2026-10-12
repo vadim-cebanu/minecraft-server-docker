@@ -40,6 +40,7 @@ The purpose of this project is to describe the whole server as code, so it can b
 | `docker-compose.yaml` | Defines the `mc-server` service with its configuration, port, volume and restart policy. |
 | `.gitignore` | Keeps secrets, server data and editor files out of the repository. |
 | `README.md` | This documentation. |
+| `.env.example` | Template for the configuration. Copy it to `.env` and adjust the values. `.env` itself is not committed. |
 
 ## Quickstart
 
@@ -57,10 +58,13 @@ The purpose of this project is to describe the whole server as code, so it can b
 git clone <repository-url>
 cd minecraft-server-docker
 
-# 2. Build the image and start the server in the background
+# 2. Create your configuration from the template
+cp .env.example .env
+
+# 3. Build the image and start the server in the background
 docker compose up -d --build
 
-# 3. Follow the logs until "Done (...)! For help, type "help"" appears
+# 4. Follow the logs until "Done (...)! For help, type "help"" appears
 docker compose logs -f mc-server
 ```
 
