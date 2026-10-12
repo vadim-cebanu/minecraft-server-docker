@@ -1,1 +1,18 @@
+# Secrets - never commit them
 .env
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# Minecraft server data (if it ever ends up in the project folder)
+data/
+world/
+logs/
+*.jar
+
+# Editor and system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
