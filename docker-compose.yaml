@@ -5,17 +5,10 @@ services:
     restart: unless-stopped
     ports:
       - "8888:25565"
-    environment:
-      EULA: "true"
-      MEMORY: "1536M"
-      MOTD: "Vadim's Minecraft Server"
-      DIFFICULTY: "normal"
-      GAMEMODE: "survival"
-      MAX_PLAYERS: "10"
-      WHITE_LIST: "false"
+    env_file:
+      - .env
     volumes:
       - mc-data:/data
-
 
 volumes:
   mc-data:
