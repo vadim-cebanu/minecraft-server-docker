@@ -9,15 +9,17 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Download the server
-RUN mkdir -p /opt/minecraft \
-    && curl -fsSL -o /opt/minecraft/server.jar "${SERVER_JAR_URL}"
+# Working directory for the server program (created automatically)
+WORKDIR /opt/minecraft
+
+# Download the server into the working directory
+RUN curl -fsSL -o server.jar "${SERVER_JAR_URL}"
 
 # Start script
 COPY --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
 
-# Default values, so the server always starts
-ENV EULA=true \
+# Default values - the EULA must be accepted explicitly by the user
+ENV EULA=false \
     MEMORY=1536M \
     MOTD="Minecraft Server" \
     DIFFICULTY=easy \
@@ -25,6 +27,7 @@ ENV EULA=true \
     MAX_PLAYERS=10 \
     WHITE_LIST=false
 
+# Working directory for the server data (world, config) - mounted as volume
 WORKDIR /data
 EXPOSE 25565
 
