@@ -4,8 +4,7 @@ services:
     container_name: mc-server
     restart: unless-stopped
     ports:
-      - "8888:25565"
-    env_file:
+      - "${HOST_PORT:-8888}:25565"
       - .env
     volumes:
       - mc-data:/data
