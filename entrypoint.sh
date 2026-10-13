@@ -1,8 +1,13 @@
 #!/bin/bash
 set -e
 
-# Accept the Minecraft EULA
-echo "eula=${EULA}" > eula.txt
+# The user must accept the Minecraft EULA explicitly
+if [ "${EULA}" != "true" ]; then
+    echo "ERROR: You must accept the Minecraft EULA (https://aka.ms/MinecraftEULA)."
+    echo "Set EULA=true in your .env file."
+    exit 1
+fi
+echo "eula=true" > eula.txt
 
 # Write the settings from the environment variables into server.properties
 cat > server.properties <<EOF
