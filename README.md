@@ -41,6 +41,9 @@ The purpose of this project is to describe the whole server as code, so it can b
 - The server port (default **8888/TCP**) open in the firewall of the VM / cloud provider
 - Internet access during the build (to download the server from Mojang)
 
+> [!IMPORTANT]
+> If the port is not open in the firewall of the VM / cloud provider, the server runs but nobody can connect to it.
+
 ### Start the Server
 
 ```bash
@@ -60,6 +63,9 @@ docker compose up -d --build
 # 5. Follow the logs until "Done (...)! For help, type "help"" appears
 docker compose logs -f mc-server
 ```
+
+> [!IMPORTANT]
+> Without `EULA=true` in `.env` the container stops right after the start. See [Accepting the EULA](#accepting-the-eula).
 
 Press `Ctrl+C` to leave the logs. The server keeps running.
 
@@ -108,6 +114,9 @@ The server runs in the folder `/data`. Everything the server writes there (world
 
 All settings are configured in the `.env` file (created from `.env.example`). Docker Compose loads it with `env_file`. Nothing is hardcoded in `docker-compose.yaml`.
 
+> [!NOTE]
+> `.env` is your local configuration and is never committed. Only `.env.example` is part of the repository.
+
 | Variable | Default | Description | Possible values |
 |---|---|---|---|
 | `EULA` | `false` | Accepts the Minecraft EULA. Must be set to `true` explicitly. | `true`, `false` |
@@ -136,6 +145,9 @@ docker compose up -d
 ```
 
 The start script rewrites `server.properties` on every start, so the values in `.env` are always the ones the server uses.
+
+> [!WARNING]
+> Do not edit `server.properties` by hand. Your changes are overwritten on the next start. Change the values in `.env` instead.
 
 **Adding a new setting** (e.g. `pvp`):
 
@@ -166,6 +178,9 @@ HOST_PORT=25565
 
 Then run `docker compose up -d` and open the new port in the firewall.
 
+> [!NOTE]
+> Only `HOST_PORT` changes. The port inside the container stays `25565`.
+
 ### Updating the Minecraft Version
 
 The download link of the server is set as a build argument in the `Dockerfile`:
@@ -183,6 +198,7 @@ docker compose build --no-cache
 docker compose up -d
 ```
 
+> [!WARNING]
 > Make a backup of the world before updating. A world opened with a newer version cannot be opened with an older one.
 
 ### Persistence
@@ -196,7 +212,8 @@ docker run --rm -v minecraft-server-docker_mc-data:/data -v "$(pwd)":/backup ubu
   tar czf /backup/mc-backup.tar.gz -C /data .
 ```
 
-> **Warning:** `docker compose down -v` deletes the volume and therefore the world.
+> [!CAUTION]
+> `docker compose down -v` deletes the volume and therefore the world.
 
 ### Restart Behaviour
 
@@ -264,4 +281,6 @@ The server process is stopped without `docker stop`. Docker starts the container
 - The configuration is loaded from `.env`, which is excluded by `.gitignore` and `.dockerignore`.
 - The EULA is never accepted automatically; the user has to set `EULA=true` explicitly.
 - `online-mode` stays enabled (server default), so only players with a valid Minecraft account can join.
-- For a private server, set `WHITE_LIST=true` and add players in the server console with `whitelist add <name>`.
+
+> [!TIP]
+> For a private server, set `WHITE_LIST=true` and add players in the server console with `whitelist add <name>`.
