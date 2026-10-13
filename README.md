@@ -5,14 +5,15 @@ A self-built Docker image and Docker Compose setup for running the official Mine
 ## Table of Contents
 
 - [Description](#description)
-- [Repository Contents](#repository-contents)
 - [Quickstart](#quickstart)
   - [Prerequisites](#prerequisites)
   - [Start the Server](#start-the-server)
   - [Connect to the Server](#connect-to-the-server)
+- [Repository Contents](#repository-contents)
 - [Usage](#usage)
   - [How It Works](#how-it-works)
-  - [Configuration with Environment Variables](#configuration-with-environment-variables)
+  - [Configuration with the .env File](#configuration-with-the-env-file)
+  - [Accepting the EULA](#accepting-the-eula)
   - [Changing the Port](#changing-the-port)
   - [Updating the Minecraft Version](#updating-the-minecraft-version)
   - [Persistence](#persistence)
@@ -27,20 +28,9 @@ This repository contains everything needed to run a Minecraft Java Edition serve
 
 The Docker image is built from the official Java 25 runtime image (`eclipse-temurin:25-jre`), so no prebuilt Minecraft image is used. During the build, the official `server.jar` is downloaded from Mojang. A small start script turns environment variables into the server configuration (`server.properties`).
 
-Docker Compose starts the server on port **8888**, stores the world in a persistent volume and restarts the container automatically if it crashes.
+All configuration comes from outside the container, from a local `.env` file. Docker Compose starts the server on a configurable port (default **8888**), stores the world in a persistent volume and restarts the container automatically if it crashes.
 
 The purpose of this project is to describe the whole server as code, so it can be started on any machine with Docker in a reproducible way.
-
-## Repository Contents
-
-| File | Purpose |
-|---|---|
-| `Dockerfile` | Builds the image: Java base image, installs `curl`, downloads the official `server.jar`, sets default values for all settings. |
-| `entrypoint.sh` | Start script of the container: accepts the EULA, writes the environment variables into `server.properties` and starts the server. |
-| `docker-compose.yaml` | Defines the `mc-server` service with its configuration, port, volume and restart policy. |
-| `.gitignore` | Keeps secrets, server data and editor files out of the repository. |
-| `README.md` | This documentation. |
-| `.env.example` | Template for the configuration. Copy it to `.env` and adjust the values. `.env` itself is not committed. |
 
 ## Quickstart
 
@@ -48,7 +38,7 @@ The purpose of this project is to describe the whole server as code, so it can b
 
 - A Linux machine or cloud VM with at least **2 GB of free RAM**
 - **Docker Engine** and the **Docker Compose plugin** (`docker compose version`)
-- Port **8888/TCP** open in the firewall of the VM / cloud provider
+- The server port (default **8888/TCP**) open in the firewall of the VM / cloud provider
 - Internet access during the build (to download the server from Mojang)
 
 ### Start the Server
@@ -61,51 +51,67 @@ cd minecraft-server-docker
 # 2. Create your configuration from the template
 cp .env.example .env
 
-# 3. Build the image and start the server in the background
+# 3. Read the Minecraft EULA and accept it in .env: EULA=true
+nano .env
+
+# 4. Build the image and start the server in the background
 docker compose up -d --build
 
-# 4. Follow the logs until "Done (...)! For help, type "help"" appears
+# 5. Follow the logs until "Done (...)! For help, type "help"" appears
 docker compose logs -f mc-server
 ```
 
 Press `Ctrl+C` to leave the logs. The server keeps running.
 
-> By starting the server you accept the [Minecraft EULA](https://aka.ms/MinecraftEULA).
-
 ### Connect to the Server
 
 In Minecraft Java Edition: **Multiplayer → Add Server** → Server Address: `<VM-IP>:8888`
+
+## Repository Contents
+
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Builds the image: Java base image, installs `curl`, downloads the official `server.jar`, sets default values. |
+| `entrypoint.sh` | Start script of the container: checks the EULA, writes the environment variables into `server.properties` and starts the server. |
+| `docker-compose.yaml` | Defines the `mc-server` service with port, volume, restart policy and the `.env` file. |
+| `.env.example` | Template for the configuration. Copy it to `.env` and adjust the values. `.env` itself is not committed. |
+| `.gitignore` | Keeps secrets (`.env`, keys), server data and editor files out of the repository. |
+| `.dockerignore` | Keeps files that are not needed in the image (e.g. `.git`, `.env`, documentation) out of the build context. |
+| `checklist.md` | Copy of the project checklist. |
+| `README.md` | This documentation. |
+| `checklist.pdf` | Original project checklist (PDF). |
 
 ## Usage
 
 ### How It Works
 
 ```
-docker compose up --build
-        │
-        ▼
+.env ──► docker compose up --build
+                │
+                ▼
 Dockerfile ──► eclipse-temurin:25-jre + curl
            ──► downloads server.jar to /opt/minecraft
            ──► sets default values (ENV)
-        │
-        ▼
-entrypoint.sh ──► writes eula.txt
+                │
+                ▼
+entrypoint.sh ──► checks EULA=true
               ──► writes server.properties from the environment variables
-              ──► exec java -jar server.jar
-        │
-        ▼
-Port 8888 (host) ──► 25565 (container)     Volume mc-data ──► /data (world + config)
+              ──► exec java -jar /opt/minecraft/server.jar
+                │
+                ▼
+HOST_PORT (host) ──► 25565 (container)     Volume mc-data ──► /data (world + config)
 ```
 
 The server runs in the folder `/data`. Everything the server writes there (world, configuration, logs) is stored in the volume. The `server.jar` itself is part of the image (`/opt/minecraft`).
 
-### Configuration with Environment Variables
+### Configuration with the .env File
 
-All settings are configured in the `environment:` section of `docker-compose.yaml`. Every variable has a default value in the `Dockerfile`, so the server always starts, even if a variable is missing.
+All settings are configured in the `.env` file (created from `.env.example`). Docker Compose loads it with `env_file`. Nothing is hardcoded in `docker-compose.yaml`.
 
 | Variable | Default | Description | Possible values |
 |---|---|---|---|
-| `EULA` | `true` | Accepts the Minecraft EULA. The server does not start without it. | `true` |
+| `EULA` | `false` | Accepts the Minecraft EULA. Must be set to `true` explicitly. | `true`, `false` |
+| `HOST_PORT` | `8888` | Port on the host that players connect to | any free port |
 | `MEMORY` | `1536M` | RAM for the server (Java `-Xms` / `-Xmx`) | e.g. `1G`, `1536M`, `2G` |
 | `MOTD` | `Minecraft Server` | Text shown in the server list | any text |
 | `DIFFICULTY` | `easy` | Difficulty | `peaceful`, `easy`, `normal`, `hard` |
@@ -115,13 +121,12 @@ All settings are configured in the `environment:` section of `docker-compose.yam
 
 **Example – a creative server for 5 players:**
 
-Change these lines in `docker-compose.yaml`:
+Change these lines in `.env`:
 
-```yaml
-    environment:
-      GAMEMODE: "creative"
-      DIFFICULTY: "peaceful"
-      MAX_PLAYERS: "5"
+```dotenv
+GAMEMODE=creative
+DIFFICULTY=peaceful
+MAX_PLAYERS=5
 ```
 
 Apply the change (no rebuild needed):
@@ -130,22 +135,33 @@ Apply the change (no rebuild needed):
 docker compose up -d
 ```
 
-The start script rewrites `server.properties` on every start, so the values in `docker-compose.yaml` are always the ones the server uses.
+The start script rewrites `server.properties` on every start, so the values in `.env` are always the ones the server uses.
 
 **Adding a new setting** (e.g. `pvp`):
 
 1. `Dockerfile`: add a default value, e.g. `PVP=true`, to the `ENV` block
 2. `entrypoint.sh`: add the line `pvp=${PVP}` inside the `server.properties` block
-3. `docker-compose.yaml`: set the value, e.g. `PVP: "false"`
+3. `.env.example` and `.env`: add `PVP=false`
 4. Rebuild: `docker compose up -d --build`
+
+### Accepting the EULA
+
+The Minecraft server only runs if you accept the [Minecraft EULA](https://aka.ms/MinecraftEULA). This is **not** done automatically: the default value is `EULA=false`.
+
+Read the EULA and then set in `.env`:
+
+```dotenv
+EULA=true
+```
+
+If `EULA` is not `true`, the container stops with a message in the logs (`docker compose logs mc-server`).
 
 ### Changing the Port
 
-Players connect on port **8888** of the host. Inside the container the server always listens on `25565`. To use another port, change the left side of the port mapping in `docker-compose.yaml`:
+Players connect on `HOST_PORT` (default `8888`). Inside the container the server always listens on `25565`. To use another port, change it in `.env`:
 
-```yaml
-    ports:
-      - "25565:25565"   # host:container
+```dotenv
+HOST_PORT=25565
 ```
 
 Then run `docker compose up -d` and open the new port in the firewall.
@@ -191,7 +207,7 @@ The service uses `restart: unless-stopped`. Docker restarts the container automa
 | Command | Description |
 |---|---|
 | `docker compose up -d --build` | Build the image and start the server |
-| `docker compose up -d` | Apply changes from `docker-compose.yaml` |
+| `docker compose up -d` | Apply changes from `.env` or `docker-compose.yaml` |
 | `docker compose ps` | Show status and ports |
 | `docker compose logs -f mc-server` | Follow the server logs |
 | `docker compose restart mc-server` | Restart the server |
@@ -208,7 +224,7 @@ docker compose ps
 
 The status must be `Up` and the ports `0.0.0.0:8888->25565/tcp`.
 
-**2. The server is reachable on port 8888** (from another computer, with [mcstatus](https://github.com/py-mine/mcstatus)):
+**2. The server is reachable** (from another computer, with [mcstatus](https://github.com/py-mine/mcstatus)):
 
 ```bash
 python3 -m venv venv
@@ -245,7 +261,7 @@ The server process is stopped without `docker stop`. Docker starts the container
 ## Security Notes
 
 - No passwords, tokens, usernames, IP addresses or SSH keys are stored in this repository.
-- `.gitignore` excludes `.env` files and keys, so secrets cannot be committed by mistake.
-- Only non-critical settings are configured in `docker-compose.yaml`.
+- The configuration is loaded from `.env`, which is excluded by `.gitignore` and `.dockerignore`.
+- The EULA is never accepted automatically; the user has to set `EULA=true` explicitly.
 - `online-mode` stays enabled (server default), so only players with a valid Minecraft account can join.
-- For a private server, set `WHITE_LIST: "true"` and add players in the server console with `whitelist add <name>`.
+- For a private server, set `WHITE_LIST=true` and add players in the server console with `whitelist add <name>`.
